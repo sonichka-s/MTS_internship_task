@@ -41,11 +41,37 @@ export default {
   setup() {
     let characterData: Ref<Character[]> = ref([]);
     async function LoadCards() {
+      let resultData: Array<Character> = [];
+
       const response = await axios.get(
         "https://rickandmortyapi.com/api/character/"
       );
 
-      return response.data.results.map((rawData: any) => ({
+      for (let i = 2; i < response.data.info.pages; i++) {
+        let tempData: Array<Character> = [];
+
+        const newPageResponse = await axios.get(
+          "https://rickandmortyapi.com/api/character/",
+          {
+            params: {
+              page: i,
+            },
+          }
+        );
+
+        tempData = newPageResponse.data.results.map((rawData: any) => ({
+          id: rawData.id,
+          name: rawData.name,
+          gender: rawData.gender,
+          status: rawData.status,
+          location: rawData.location.name,
+          image: rawData.image,
+        }));
+
+        resultData = [...resultData, ...tempData];
+      }
+
+      let firstResponseData = response.data.results.map((rawData: any) => ({
         id: rawData.id,
         name: rawData.name,
         gender: rawData.gender,
@@ -53,6 +79,9 @@ export default {
         location: rawData.location.name,
         image: rawData.image,
       }));
+
+      resultData = [...firstResponseData, ...resultData];
+      return resultData;
     }
 
     let size = ref(document.documentElement.clientWidth);
