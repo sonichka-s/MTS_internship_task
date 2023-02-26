@@ -1,5 +1,6 @@
 <template>
   <div class="main">
+    <div v-if="isLoading">Загрузка...</div>
     <page-footer
       :value="currentPage"
       :numberOfPages="numberOfPages"
@@ -20,8 +21,13 @@
 import SingleCard from "@/components/SingleCard.vue";
 import PageFooter from "@/components/PageFooter.vue";
 import { usePagination } from "@/hooks/usePagination";
-import axios from "axios";
 import { onMounted, ref, Ref, watchEffect } from "vue";
+import { $url, CHARACTER_URL } from "@/axios/config";
+import {
+  BREAKPOINT_MD,
+  CARDS_PER_PAGE_L,
+  CARDS_PER_PAGE_S,
+} from "@/utils/utils";
 
 export interface Character {
   id: number;
@@ -40,38 +46,12 @@ export default {
 
   setup() {
     let characterData: Ref<Character[]> = ref([]);
-    async function LoadCards() {
-      let resultData: Array<Character> = [];
+    let totalCharacterAmount = ref(0);
+    let loadedPagesAmount = 0;
+    let isLoading = ref(false);
 
-      const response = await axios.get(
-        "https://rickandmortyapi.com/api/character/"
-      );
-
-      for (let i = 2; i < response.data.info.pages; i++) {
-        let tempData: Array<Character> = [];
-
-        const newPageResponse = await axios.get(
-          "https://rickandmortyapi.com/api/character/",
-          {
-            params: {
-              page: i,
-            },
-          }
-        );
-
-        tempData = newPageResponse.data.results.map((rawData: any) => ({
-          id: rawData.id,
-          name: rawData.name,
-          gender: rawData.gender,
-          status: rawData.status,
-          location: rawData.location.name,
-          image: rawData.image,
-        }));
-
-        resultData = [...resultData, ...tempData];
-      }
-
-      let firstResponseData = response.data.results.map((rawData: any) => ({
+    const parseResponse = (res: Array<any>): Character[] => {
+      return res.map((rawData: any) => ({
         id: rawData.id,
         name: rawData.name,
         gender: rawData.gender,
@@ -79,23 +59,55 @@ export default {
         location: rawData.location.name,
         image: rawData.image,
       }));
+    };
 
-      resultData = [...firstResponseData, ...resultData];
-      return resultData;
+    async function LoadFirstPage() {
+      const response = await $url(CHARACTER_URL);
+      const count = response.data.info.count;
+      loadedPagesAmount++;
+
+      return [parseResponse(response.data.results), count];
+    }
+
+    async function LoadNextPage(pageNum: number) {
+      isLoading.value = true;
+      const response = await $url(CHARACTER_URL, {
+        params: {
+          page: pageNum,
+        },
+      });
+
+      return parseResponse(response.data.results);
     }
 
     let size = ref(document.documentElement.clientWidth);
     const cardsPerPage = ref(0);
     const currentPage = ref(1);
 
+    watchEffect(async () => {
+      if (
+        currentPage.value * cardsPerPage.value >= characterData.value.length &&
+        characterData.value.length < totalCharacterAmount.value
+      ) {
+        characterData.value = [
+          ...characterData.value,
+          ...(await LoadNextPage(++loadedPagesAmount)),
+        ];
+        isLoading.value = false;
+      }
+    });
+
     watchEffect(() => {
-      size.value >= 769 ? (cardsPerPage.value = 4) : (cardsPerPage.value = 2);
+      size.value >= BREAKPOINT_MD
+        ? (cardsPerPage.value = CARDS_PER_PAGE_L)
+        : (cardsPerPage.value = CARDS_PER_PAGE_S);
     });
 
     const { dividedArray, numberOfPages } = usePagination<Character>({
       cardsPerPage,
       paginationArray: characterData,
       currentPage,
+      totalCharacterAmount,
     });
 
     const handleScreenSize = () => {
@@ -104,7 +116,7 @@ export default {
 
     onMounted(async () => {
       window.addEventListener("resize", handleScreenSize);
-      characterData.value = await LoadCards();
+      [characterData.value, totalCharacterAmount.value] = await LoadFirstPage();
     });
 
     return {
@@ -113,6 +125,7 @@ export default {
       numberOfPages,
       dividedArray,
       cardsPerPage,
+      isLoading,
     };
   },
 };

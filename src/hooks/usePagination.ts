@@ -4,6 +4,7 @@ interface paginationConfig<T> {
   cardsPerPage: Ref<number>;
   paginationArray: Ref<T[]>;
   currentPage: Ref<number>;
+  totalCharacterAmount: Ref<number>;
 }
 
 export function usePagination<T>(config: paginationConfig<T>) {
@@ -17,7 +18,7 @@ export function usePagination<T>(config: paginationConfig<T>) {
   );
 
   const numberOfPages = computed(() =>
-    Math.ceil((config.paginationArray.value.length || 0) / cardsPerPage.value)
+    Math.ceil(config.totalCharacterAmount.value / cardsPerPage.value)
   );
 
   return {
