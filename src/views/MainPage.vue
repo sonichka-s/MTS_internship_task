@@ -7,7 +7,7 @@
       :numberOfPages="numberOfPages"
       @update:value="(newValue) => (currentPage = newValue)"
     ></page-footer>
-    <div class="cards__grid">
+    <div class="cards__grid" :class="{ loaging: isLoading === true }">
       <single-card
         v-for="c in dividedArray"
         :key="c.id"
@@ -147,6 +147,10 @@ export default {
   top: 0;
   left: 0;
   overflow: auto;
+}
+
+.loaging {
+  display: none;
 }
 
 .cards__grid {
