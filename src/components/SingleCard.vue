@@ -24,25 +24,7 @@
 </template>
 
 <script lang="ts">
-import { onMounted, PropType } from "vue";
-
-const calculateWidth = (): void => {
-  let res = document.querySelectorAll(".card__placeholder");
-
-  res.forEach((elem) => {
-    (elem as HTMLElement).style.width = `${elem.clientHeight.toString()}px`;
-  });
-};
-
-const calculateCardSize = (): void => {
-  let height = document.documentElement.clientHeight * 0.48;
-
-  let res = document.querySelectorAll(".card");
-
-  res.forEach((elem) => {
-    (elem as HTMLElement).style.height = `${height.toString()}px`;
-  });
-};
+import { PropType } from "vue";
 
 type characterData = {
   id: number;
@@ -60,13 +42,6 @@ export default {
       required: true,
     },
   },
-
-  setup(props: any) {
-    onMounted(() => {
-      calculateCardSize();
-      calculateWidth();
-    });
-  },
 };
 </script>
 
@@ -75,8 +50,7 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  // height: calc(50vh - 10%);
-  height: 50vh;
+  width: calc(50vh - 10%);
 }
 
 .card__data {

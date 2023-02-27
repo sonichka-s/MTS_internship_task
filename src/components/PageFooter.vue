@@ -43,15 +43,7 @@
 </template>
 
 <script lang="ts" setup>
-import {
-  Ref,
-  defineProps,
-  defineEmits,
-  toRefs,
-  onMounted,
-  ref,
-  watchEffect,
-} from "vue";
+import { Ref, defineProps, defineEmits, toRefs, ref, watchEffect } from "vue";
 
 const props = defineProps({
   numberOfPages: {
@@ -97,6 +89,7 @@ watchEffect(() => {
   background: black;
   opacity: 0.9;
   padding: 0;
+  user-select: none;
   &__pages {
     font-size: 20px;
     color: white;

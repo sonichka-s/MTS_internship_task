@@ -1,6 +1,7 @@
 <template>
   <div class="main">
     <div v-if="isLoading">Загрузка...</div>
+    <div v-if="isError">Возникла ошибка</div>
     <page-footer
       :value="currentPage"
       :numberOfPages="numberOfPages"
@@ -11,7 +12,7 @@
         v-for="c in dividedArray"
         :key="c.id"
         :data="c"
-        class="cards__item_right"
+        class="cards__item"
       ></single-card>
     </div>
   </div>
@@ -45,10 +46,10 @@ export default {
   },
 
   setup() {
-    let characterData: Ref<Character[]> = ref([]);
-    let totalCharacterAmount = ref(0);
-    let loadedPagesAmount = 0;
-    let isLoading = ref(false);
+    const characterData: Ref<Character[]> = ref([]);
+    const totalCharacterAmount = ref(0);
+    const isLoading = ref(false);
+    const isError = ref(false);
 
     const parseResponse = (res: Array<any>): Character[] => {
       return res.map((rawData: any) => ({
@@ -61,26 +62,21 @@ export default {
       }));
     };
 
-    async function LoadFirstPage() {
-      const response = await $url(CHARACTER_URL);
-      const count = response.data.info.count;
-      loadedPagesAmount++;
-
-      return [parseResponse(response.data.results), count];
-    }
-
-    async function LoadNextPage(pageNum: number) {
+    async function LoadPage(pageNum: number) {
       isLoading.value = true;
       const response = await $url(CHARACTER_URL, {
         params: {
           page: pageNum,
         },
       });
+      isLoading.value = false;
 
-      return parseResponse(response.data.results);
+      return pageNum === 1
+        ? [parseResponse(response.data.results), response.data.info.count]
+        : parseResponse(response.data.results);
     }
 
-    let size = ref(document.documentElement.clientWidth);
+    const size = ref(document.documentElement.clientWidth);
     const cardsPerPage = ref(0);
     const currentPage = ref(1);
 
@@ -89,11 +85,15 @@ export default {
         currentPage.value * cardsPerPage.value >= characterData.value.length &&
         characterData.value.length < totalCharacterAmount.value
       ) {
-        characterData.value = [
-          ...characterData.value,
-          ...(await LoadNextPage(++loadedPagesAmount)),
-        ];
-        isLoading.value = false;
+        history.replaceState({ page: ++history.state.page }, "current");
+        try {
+          characterData.value = [
+            ...characterData.value,
+            ...(await LoadPage(history.state.page)),
+          ];
+        } catch {
+          isError.value = true;
+        }
       }
     });
 
@@ -115,8 +115,15 @@ export default {
     };
 
     onMounted(async () => {
+      history.pushState({ page: 1 }, "current");
       window.addEventListener("resize", handleScreenSize);
-      [characterData.value, totalCharacterAmount.value] = await LoadFirstPage();
+      try {
+        [characterData.value, totalCharacterAmount.value] = await LoadPage(
+          history.state.page
+        );
+      } catch {
+        isError.value = true;
+      }
     });
 
     return {
@@ -126,6 +133,7 @@ export default {
       dividedArray,
       cardsPerPage,
       isLoading,
+      isError,
     };
   },
 };
@@ -149,20 +157,17 @@ export default {
   transform: translate(-50%, -50%);
   display: grid;
   grid-template-columns: repeat(2, 1fr);
+  grid-auto-rows: 50vh;
   gap: 30px;
+  height: 100%;
+  overflow-y: hidden;
+  overflow-x: hidden;
   @media screen and (max-width: $screen-md) {
     grid-template-columns: repeat(1, 1fr);
   }
 }
 
-.cards__item_left {
-  justify-self: center;
-  @media screen and (min-width: $screen-md) {
-    justify-self: end;
-  }
-}
-
-.cards__item_right {
+.cards__item {
   justify-self: center;
   @media screen and (min-width: $screen-md) {
     justify-self: center;
