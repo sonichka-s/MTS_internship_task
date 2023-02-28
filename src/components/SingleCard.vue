@@ -82,8 +82,7 @@ export default {
 }
 
 .card__image {
-  min-height: 90%;
-  min-width: 90%;
+  min-width: 45vh;
   flex-shrink: 0;
 }
 </style>
