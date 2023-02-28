@@ -99,7 +99,10 @@ export default {
 
     watchEffect(async () => {
       try {
-        characterData.value = await LoadPage(currentPage.value);
+        const data = await LoadPage(currentPage.value);
+        if (data) {
+          characterData.value = data;
+        }
       } catch (err) {
         console.log(`error in ${currentPage.value} page:`, err);
         isError.value = true;
@@ -125,7 +128,10 @@ export default {
         isError.value = true;
       }
       try {
-        characterData.value = await LoadPage(currentPage.value);
+        const data = await LoadPage(currentPage.value);
+        if (data) {
+          characterData.value = data;
+        }
       } catch (err) {
         console.log("error in first page:", err);
         isError.value = true;
@@ -159,9 +165,8 @@ export default {
   grid-template-columns: repeat(2, 1fr);
   grid-auto-rows: 50vh;
   gap: 30px;
-  row-gap: 10px;
+  row-gap: 20px;
   height: 100%;
-  padding-top: 40px;
   bottom: 0;
   overflow-y: hidden;
   overflow-x: hidden;
