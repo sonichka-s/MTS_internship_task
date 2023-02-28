@@ -17,9 +17,7 @@
       <div class="card__info_extra">{{ data.gender }}</div>
       <div class="card__info_extra">{{ data.location }}</div>
     </div>
-    <div class="card__placeholder">
-      <img class="card__image" :alter="data.name" :src="data.image" />
-    </div>
+    <img class="card__image" :alter="data.name" :src="data.image" />
   </div>
 </template>
 
@@ -50,7 +48,6 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  width: calc(50vh - 10%);
 }
 
 .card__data {
@@ -84,15 +81,9 @@ export default {
   }
 }
 
-.card__placeholder {
-  background: gray;
-  height: 100%;
-  overflow: hidden;
-}
-
 .card__image {
-  min-height: 100%;
-  min-width: 100%;
+  min-height: 90%;
+  min-width: 90%;
   flex-shrink: 0;
 }
 </style>

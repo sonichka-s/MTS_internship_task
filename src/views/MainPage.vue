@@ -1,5 +1,5 @@
 <template>
-  <div class="main">
+  <div>
     <div v-if="isLoading">Загрузка...</div>
     <div v-if="isError">Возникла ошибка</div>
     <page-footer
@@ -9,10 +9,13 @@
     ></page-footer>
     <div class="cards__grid" :class="{ loaging: isLoading === true }">
       <single-card
-        v-for="c in dividedArray"
+        v-for="c in characterData"
         :key="c.id"
         :data="c"
-        class="cards__item"
+        :class="{
+          cards__item_left: c.id % 2 !== 0,
+          cards__item_right: c.id % 2 === 0,
+        }"
       ></single-card>
     </div>
   </div>
@@ -21,8 +24,7 @@
 <script lang="ts">
 import SingleCard from "@/components/SingleCard.vue";
 import PageFooter from "@/components/PageFooter.vue";
-import { usePagination } from "@/hooks/usePagination";
-import { onMounted, ref, Ref, watchEffect } from "vue";
+import { onMounted, ref, Ref, watchEffect, computed } from "vue";
 import { $url, CHARACTER_URL } from "@/axios/config";
 import {
   BREAKPOINT_MD,
@@ -48,8 +50,17 @@ export default {
   setup() {
     const characterData: Ref<Character[]> = ref([]);
     const totalCharacterAmount = ref(0);
+
     const isLoading = ref(false);
     const isError = ref(false);
+
+    const size = ref(document.documentElement.clientWidth);
+    const cardsPerPage = ref(0);
+    const currentPage = ref(1);
+
+    const numberOfPages = computed(() =>
+      Math.ceil(totalCharacterAmount.value / cardsPerPage.value)
+    );
 
     const parseResponse = (res: Array<any>): Character[] => {
       return res.map((rawData: any) => ({
@@ -62,38 +73,36 @@ export default {
       }));
     };
 
-    async function LoadPage(pageNum: number) {
-      isLoading.value = true;
-      const response = await $url(CHARACTER_URL, {
-        params: {
-          page: pageNum,
-        },
-      });
-      isLoading.value = false;
-
-      return pageNum === 1
-        ? [parseResponse(response.data.results), response.data.info.count]
-        : parseResponse(response.data.results);
+    async function getTotalCount() {
+      return await (
+        await $url(CHARACTER_URL)
+      ).data.info.count;
     }
 
-    const size = ref(document.documentElement.clientWidth);
-    const cardsPerPage = ref(0);
-    const currentPage = ref(1);
+    async function LoadPage(pageNum: number) {
+      let paramArray = [];
+
+      for (
+        let i = cardsPerPage.value * (pageNum - 1) + 1;
+        i < cardsPerPage.value * pageNum + 1;
+        i++
+      ) {
+        paramArray.push(i);
+      }
+
+      isLoading.value = true;
+      const response = await $url(`${CHARACTER_URL}${paramArray.join(",")}`);
+      isLoading.value = false;
+
+      return Array.isArray(response.data) ? parseResponse(response.data) : null;
+    }
 
     watchEffect(async () => {
-      if (
-        currentPage.value * cardsPerPage.value >= characterData.value.length &&
-        characterData.value.length < totalCharacterAmount.value
-      ) {
-        history.replaceState({ page: ++history.state.page }, "current");
-        try {
-          characterData.value = [
-            ...characterData.value,
-            ...(await LoadPage(history.state.page)),
-          ];
-        } catch {
-          isError.value = true;
-        }
+      try {
+        characterData.value = await LoadPage(currentPage.value);
+      } catch (err) {
+        console.log(`error in ${currentPage.value} page:`, err);
+        isError.value = true;
       }
     });
 
@@ -103,25 +112,22 @@ export default {
         : (cardsPerPage.value = CARDS_PER_PAGE_S);
     });
 
-    const { dividedArray, numberOfPages } = usePagination<Character>({
-      cardsPerPage,
-      paginationArray: characterData,
-      currentPage,
-      totalCharacterAmount,
-    });
-
     const handleScreenSize = () => {
       size.value = document.documentElement.clientWidth;
     };
 
     onMounted(async () => {
-      history.pushState({ page: 1 }, "current");
       window.addEventListener("resize", handleScreenSize);
       try {
-        [characterData.value, totalCharacterAmount.value] = await LoadPage(
-          history.state.page
-        );
+        totalCharacterAmount.value = await getTotalCount();
       } catch {
+        console.log("error in character amount");
+        isError.value = true;
+      }
+      try {
+        characterData.value = await LoadPage(currentPage.value);
+      } catch (err) {
+        console.log("error in first page:", err);
         isError.value = true;
       }
     });
@@ -130,7 +136,6 @@ export default {
       characterData,
       currentPage,
       numberOfPages,
-      dividedArray,
       cardsPerPage,
       isLoading,
       isError,
@@ -140,15 +145,6 @@ export default {
 </script>
 
 <style lang="scss">
-.main {
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
-  overflow: auto;
-}
-
 .loaging {
   display: none;
 }
@@ -163,7 +159,10 @@ export default {
   grid-template-columns: repeat(2, 1fr);
   grid-auto-rows: 50vh;
   gap: 30px;
+  row-gap: 10px;
   height: 100%;
+  padding-top: 40px;
+  bottom: 0;
   overflow-y: hidden;
   overflow-x: hidden;
   @media screen and (max-width: $screen-md) {
@@ -171,10 +170,17 @@ export default {
   }
 }
 
-.cards__item {
+.cards__item_left {
   justify-self: center;
   @media screen and (min-width: $screen-md) {
-    justify-self: center;
+    justify-self: end;
+  }
+}
+
+.cards__item_right {
+  justify-self: center;
+  @media screen and (min-width: $screen-md) {
+    justify-self: start;
   }
 }
 </style>
